@@ -61,9 +61,11 @@ def opts(**kwargs):
     }
 
 
-def component(namespace):
+def component(namespace=None):
     """
-    Makes the given callable a component, with much less boilerplate
+    Makes the given callable a component, with much less boilerplate.
+
+    If no namespace is given, uses the module and function names
 
     @component('pkg:MyResource')
     def MyResource(self, name, ..., __opts__):
@@ -71,6 +73,10 @@ def component(namespace):
         return {...outputs}
     """
     def _(func):
+        nonlocal namespace
+        if namespace is None:
+            namespace = f"{func.__module__.replace('.', ':')}:{func.__name__}"
+
         def __init__(self, name, *pargs, __opts__=None, **kwargs):
             super(klass, self).__init__(namespace, name, None, __opts__)
             outputs = func(self, name, *pargs, __opts__=__opts__, **kwargs)
@@ -81,6 +87,7 @@ def component(namespace):
 
         klass = type(func.__name__, (pulumi.ComponentResource,), {
             '__init__': __init__,
+            '__doc__': func.__doc__,
         })
         return klass
 
