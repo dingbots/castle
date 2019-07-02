@@ -53,6 +53,13 @@ def StaticSite(self, name, domain, zone_id, content_dir, __opts__):
             **opts(parent=web_bucket),
         )
 
+    bucket_name = web_bucket.id
+    s3.BucketPolicy(
+        f"{name}-policy",
+        bucket=bucket_name,
+        policy=bucket_name.apply(public_read_policy_for_bucket),
+    )
+
     route53.Record(
         f"{name}-record",
         name=domain,
