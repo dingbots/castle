@@ -43,8 +43,25 @@ if os.environ.get('STAGE') == 'local':
         }],
     )
 
+_provider_cache = {}
 
-def opts(**kwargs):
+
+def get_provider_for_region(region):
+    if PROVIDER is not None:
+        # Using localstack
+        return PROVIDER
+
+    if region not in _provider_cache:
+        _provider_cache[region] = pulumi_aws.Provider(
+            region,
+            # profile=pulumi_aws.config.profile, # FIXME
+            region=region,
+        )
+
+    return _provider_cache[region]
+
+
+def opts(*, region=None, **kwargs):
     """
     Defines an __opts__ for resources, including any localstack config.
 
@@ -54,8 +71,15 @@ def opts(**kwargs):
     Usage:
     >>> Resource(..., **opts(...))
     """
-    if PROVIDER is not None and 'parent' not in kwargs:
-        kwargs['provider'] = PROVIDER
+    if PROVIDER is not None:
+        # Using localstack
+        if 'parent' not in kwargs:
+            # Unless a parent is set, in which case lets use inheritance
+            kwargs.setdefault('provider', PROVIDER)
+    elif region is not None:
+        assert 'provider' not in kwargs
+        # Specified a specific region (and not using localstatck)
+        kwargs['provider'] = get_provider_for_region(region)
     return {
         '__opts__': pulumi.ResourceOptions(**kwargs)
     }
@@ -77,9 +101,9 @@ def component(namespace=None):
         if namespace is None:
             namespace = f"{func.__module__.replace('.', ':')}:{func.__name__}"
 
-        def __init__(self, name, *pargs, __opts__=None, **kwargs):
-            super(klass, self).__init__(namespace, name, None, __opts__)
-            outputs = func(self, name, *pargs, __opts__=__opts__, **kwargs)
+        def __init__(self, __name__, *pargs, __opts__=None, **kwargs):
+            super(klass, self).__init__(namespace, __name__, None, __opts__)
+            outputs = func(self, __name__, *pargs, __opts__=__opts__, **kwargs)
             if outputs:
                 # TOOD: Filter for just the outputs
                 self.register_outputs(outputs)
@@ -122,3 +146,48 @@ def and_then(awaitable):
         return mkfuture(wrapper())
 
     return _
+
+
+def outputish(func):
+    """
+    Decorator to produce FauxOutputs on call
+    """
+    @functools.wraps(func)
+    def wrapper(*pargs, **kwargs):
+        return FauxOutput(func(*pargs, **kwargs))
+
+    return wrapper
+
+
+class FauxOutput:
+    """
+    Makes a coroutine a faux Output.
+    """
+    def __init__(self, coro):
+        self._value = mkfuture(coro)
+
+    @outputish
+    async def __getitem__(self, key):
+        """
+        Shortcut to index the eventual value.
+        """
+        return (await self._value)[key]
+
+    @outputish
+    async def __getattr__(self, name):
+        """
+        Shortcut to get an attribute from the eventual value.
+        """
+        return getattr(await self._value, name)
+
+    @outputish
+    async def apply(self, func):
+        """
+        Eventually call the given function with the eventual value.
+        """
+        value = await self._value
+        rv = mkfuture(func(value))
+        return await rv
+
+    def __await__(self):
+        return self._value.__await__()
