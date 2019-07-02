@@ -1,11 +1,14 @@
 import pulumi
 import pulumi_aws
 import os
+import inspect
+import asyncio
+import functools
 
 
 PROVIDER = None
 
-if os.environ.get('STAGE') == 'local' or True:
+if os.environ.get('STAGE') == 'local':
     PROVIDER = pulumi_aws.Provider(
         "localstack",
         skip_credentials_validation=True,
@@ -45,10 +48,13 @@ def opts(**kwargs):
     """
     Defines an __opts__ for resources, including any localstack config.
 
+    localstack config is only applied if this is a top-level component (does not
+    have a parent).
+
     Usage:
     >>> Resource(..., **opts(...))
     """
-    if PROVIDER is not None:
+    if PROVIDER is not None and 'parent' not in kwargs:
         kwargs['provider'] = PROVIDER
     return {
         '__opts__': pulumi.ResourceOptions(**kwargs)
@@ -60,14 +66,14 @@ def component(namespace):
     Makes the given callable a component, with much less boilerplate
 
     @component('pkg:MyResource')
-    def MyResource(name, ..., __opts__):
+    def MyResource(self, name, ..., __opts__):
         ...
         return {...outputs}
     """
     def _(func):
         def __init__(self, name, *pargs, __opts__=None, **kwargs):
             super(klass, self).__init__(namespace, name, None, __opts__)
-            outputs = func(name, *pargs, __opts__=__opts__, **kwargs)
+            outputs = func(self, name, *pargs, __opts__=__opts__, **kwargs)
             if outputs:
                 # TOOD: Filter for just the outputs
                 self.register_outputs(outputs)
@@ -77,5 +83,35 @@ def component(namespace):
             '__init__': __init__,
         })
         return klass
+
+    return _
+
+
+def mkfuture(val):
+    if inspect.isawaitable(val):
+        return asyncio.ensure_future(val)
+    else:
+        f = asyncio.get_event_loop().create_future()
+        f.set_result(val)
+        return f
+
+
+def and_then(awaitable):
+    """
+    Chain together coroutines
+    """
+    # Don't like turning these into tasks, but there's some kind of multi-await
+    # going on inside pulumi
+    awaitable = mkfuture(awaitable)
+
+    def _(func):
+
+        @functools.wraps(func)
+        async def wrapper():
+            value = await awaitable
+            rv = mkfuture(func(value))
+            return await rv
+
+        return mkfuture(wrapper())
 
     return _
