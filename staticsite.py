@@ -70,6 +70,7 @@ def Certificate(self, name, domain, zone, __opts__):
     )
 
     return {
+        'cert': cert,
         'cert_arn': validation.certificate_arn,
     }
 
@@ -93,7 +94,6 @@ def StaticSite(self, name, domain, zone, content_dir, __opts__):
         **opts(parent=self),
     )
 
-    # FIXME: Recursive
     for absp, relp in walk(content_dir):
         mime_type, _ = mimetypes.guess_type(str(absp))
         s3.BucketObject(
@@ -210,5 +210,5 @@ def StaticSite(self, name, domain, zone, content_dir, __opts__):
     return {
         'bucket_id': web_bucket.id,
         'bucket_url': web_bucket.website_endpoint,
-        'url': f'http://{domain}/'
+        'url': f'https://{domain}/'
     }

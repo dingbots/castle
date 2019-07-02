@@ -119,12 +119,28 @@ def component(namespace=None):
 
 
 def mkfuture(val):
+    """
+    Wrap the given value in a future (turn into a task).
+
+    Intelligentally handles awaitables vs not.
+    """
     if inspect.isawaitable(val):
         return asyncio.ensure_future(val)
     else:
         f = asyncio.get_event_loop().create_future()
         f.set_result(val)
         return f
+
+
+async def unwrap(value):
+    """
+    Resolve all the awaitables, returing a simple value.
+    """
+    # This is to make sure awaitables boxing awaitables get handled.
+    # This shouldn't happen in proper programs, but async can be hard.
+    while inspect.isawaitable(value):
+        value = await value
+    return value
 
 
 def and_then(awaitable):
@@ -139,9 +155,9 @@ def and_then(awaitable):
 
         @functools.wraps(func)
         async def wrapper():
-            value = await awaitable
-            rv = mkfuture(func(value))
-            return await rv
+            value = unwrap(awaitable)
+            rv = func(value)
+            return await unwrap(rv)
 
         return mkfuture(wrapper())
 
@@ -185,9 +201,9 @@ class FauxOutput:
         """
         Eventually call the given function with the eventual value.
         """
-        value = await self._value
-        rv = mkfuture(func(value))
-        return await rv
+        value = await unwrap(self._value)
+        rv = func(value)
+        return await unwrap(rv)
 
     def __await__(self):
         return self._value.__await__()
