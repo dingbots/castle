@@ -11,6 +11,6 @@ jobs:
       - pulumi/login
       - run:
           command: |
-            pip install -r requirements.txt
+            pip install --user -r requirements.txt
       - pulumi/preview:
           stack: dev
