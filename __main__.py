@@ -14,6 +14,4 @@ site = StaticSite(
     **opts(),
 )
 
-# Export the name of the bucket
 pulumi.export('website',  site.url)
-# pulumi.export('nameservers', zone.name_servers)
