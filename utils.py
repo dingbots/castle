@@ -230,6 +230,8 @@ def component(namespace=None, outputs=()):
         klass = type(func.__name__, (pulumi.ComponentResource,), {
             '__init__': __init__,
             '__doc__': func.__doc__,
+            '__module__': func.__module__,
+            '__qualname__': func.__qualname__,
         })
         return klass
 
