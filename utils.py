@@ -4,10 +4,7 @@ import os
 import inspect
 import asyncio
 import functools
-import logging
 import traceback
-
-logger = logging.getLogger(__name__)
 
 
 PROVIDER = None
@@ -94,6 +91,8 @@ def mkfuture(val):
     Wrap the given value in a future (turn into a task).
 
     Intelligentally handles awaitables vs not.
+
+    Note: Does not perform error handling for the task.
     """
     if inspect.isawaitable(val):
         return asyncio.ensure_future(val)
@@ -109,10 +108,8 @@ async def unwrap(value):
     """
     # This is to make sure awaitables boxing awaitables get handled.
     # This shouldn't happen in proper programs, but async can be hard.
-    logger.debug("unwrap %r", value)
     while inspect.isawaitable(value):
         value = await value
-        logger.debug("unwrap %r", value)
     return value
 
 
@@ -130,13 +127,16 @@ def outputish(func):
 def task(func):
     """
     Decorator to turn coroutines into tasks.
+
+    Will also log errors, so failures don't go unreported.
     """
     async def runner(*pargs, **kwargs):
         try:
-            await func(*pargs, **kwargs)
+            return await func(*pargs, **kwargs)
         except Exception:
             traceback.print_exc()
             pulumi.error(f"Error in {func}")
+            raise
 
     @functools.wraps(func)
     def wrapper(*pargs, **kwargs):
@@ -147,7 +147,7 @@ def task(func):
 
 class FauxOutput:
     """
-    Makes a coroutine a faux Output.
+    Acts like an Output-like for plain coroutines.
     """
     def __init__(self, coro):
         self._value = mkfuture(coro)
@@ -198,22 +198,25 @@ def component(namespace=None, outputs=()):
         def __init__(self, __name__, *pargs, __opts__=None, **kwargs):
             super(klass, self).__init__(namespace, __name__, None, __opts__)
             futures = {}
-            logger.debug("Building outputs")
+            # Build out the declared outputs so they're available immediately
             for name in outputs:
                 futures[name] = asyncio.get_event_loop().create_future()
+                # FIXME: Use real Outputs instead of FauxOutputs
                 setattr(self, name, FauxOutput(futures[name]))
 
             @task
             async def inittask():
-                logger.debug("calling init func %r", func)
+                # Wraps up the initialization function and marshalls the data around
                 try:
+                    # Call the initializer
                     outs = await unwrap(func(self, __name__, *pargs, __opts__=__opts__, **kwargs))
                 except Exception as e:
+                    # Forward the exception to the futures, so they don't hang
                     for f in futures.values():
                         f.set_exception(e)
                     raise
                 else:
-                    logger.debug(f"processing outs {outs!r}")
+                    # Process the returned outputs
                     if outs is None:
                         outs = {}
                     # TOOD: Filter for just the outputs
@@ -224,7 +227,6 @@ def component(namespace=None, outputs=()):
                         else:
                             setattr(self, name, value)
 
-            logger.debug("starting task")
             inittask()
 
         klass = type(func.__name__, (pulumi.ComponentResource,), {
