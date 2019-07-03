@@ -116,27 +116,6 @@ async def unwrap(value):
     return value
 
 
-def and_then(awaitable):
-    """
-    Chain together coroutines
-    """
-    # Don't like turning these into tasks, but there's some kind of multi-await
-    # going on inside pulumi
-    awaitable = mkfuture(awaitable)
-
-    def _(func):
-
-        @functools.wraps(func)
-        async def wrapper():
-            value = unwrap(awaitable)
-            rv = func(value)
-            return await unwrap(rv)
-
-        return mkfuture(wrapper())
-
-    return _
-
-
 def outputish(func):
     """
     Decorator to produce FauxOutputs on call
@@ -149,6 +128,9 @@ def outputish(func):
 
 
 def task(func):
+    """
+    Decorator to turn coroutines into tasks.
+    """
     async def runner(*pargs, **kwargs):
         try:
             await func(*pargs, **kwargs)
