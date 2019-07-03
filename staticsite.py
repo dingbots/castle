@@ -2,7 +2,6 @@ import json
 import mimetypes
 from pathlib import Path
 
-import pulumi
 from pulumi import FileAsset
 from pulumi_aws import s3, route53, acm, cloudfront
 
@@ -36,7 +35,7 @@ def walk(starting):
         yield absp, relp
 
 
-@component()
+@component(outputs=['cert', 'cert_arn'])
 def Certificate(self, name, domain, zone, __opts__):
     """
     Gets a TLS certifcate for the given domain, using ACM and DNS validation.
@@ -75,7 +74,7 @@ def Certificate(self, name, domain, zone, __opts__):
     }
 
 
-@component()
+@component(outputs=['url'])
 def StaticSite(self, name, domain, zone, content_dir, __opts__):
     """
     A static site, at the given domain with the contents of the given directory.
@@ -208,7 +207,5 @@ def StaticSite(self, name, domain, zone, content_dir, __opts__):
     )
 
     return {
-        'bucket_id': web_bucket.id,
-        'bucket_url': web_bucket.website_endpoint,
         'url': f'https://{domain}/'
     }

@@ -4,6 +4,10 @@ import os
 import inspect
 import asyncio
 import functools
+import logging
+import traceback
+
+logger = logging.getLogger(__name__)
 
 
 PROVIDER = None
@@ -85,39 +89,6 @@ def opts(*, region=None, **kwargs):
     }
 
 
-def component(namespace=None):
-    """
-    Makes the given callable a component, with much less boilerplate.
-
-    If no namespace is given, uses the module and function names
-
-    @component('pkg:MyResource')
-    def MyResource(self, name, ..., __opts__):
-        ...
-        return {...outputs}
-    """
-    def _(func):
-        nonlocal namespace
-        if namespace is None:
-            namespace = f"{func.__module__.replace('.', ':')}:{func.__name__}"
-
-        def __init__(self, __name__, *pargs, __opts__=None, **kwargs):
-            super(klass, self).__init__(namespace, __name__, None, __opts__)
-            outputs = func(self, __name__, *pargs, __opts__=__opts__, **kwargs)
-            if outputs:
-                # TOOD: Filter for just the outputs
-                self.register_outputs(outputs)
-                vars(self).update(outputs)
-
-        klass = type(func.__name__, (pulumi.ComponentResource,), {
-            '__init__': __init__,
-            '__doc__': func.__doc__,
-        })
-        return klass
-
-    return _
-
-
 def mkfuture(val):
     """
     Wrap the given value in a future (turn into a task).
@@ -138,8 +109,10 @@ async def unwrap(value):
     """
     # This is to make sure awaitables boxing awaitables get handled.
     # This shouldn't happen in proper programs, but async can be hard.
+    logger.debug("unwrap %r", value)
     while inspect.isawaitable(value):
         value = await value
+        logger.debug("unwrap %r", value)
     return value
 
 
@@ -171,6 +144,21 @@ def outputish(func):
     @functools.wraps(func)
     def wrapper(*pargs, **kwargs):
         return FauxOutput(func(*pargs, **kwargs))
+
+    return wrapper
+
+
+def task(func):
+    async def runner(*pargs, **kwargs):
+        try:
+            await func(*pargs, **kwargs)
+        except Exception:
+            traceback.print_exc()
+            pulumi.error(f"Error in {func}")
+
+    @functools.wraps(func)
+    def wrapper(*pargs, **kwargs):
+        return asyncio.create_task(runner(*pargs, **kwargs))
 
     return wrapper
 
@@ -207,3 +195,60 @@ class FauxOutput:
 
     def __await__(self):
         return self._value.__await__()
+
+
+def component(namespace=None, outputs=()):
+    """
+    Makes the given callable a component, with much less boilerplate.
+
+    If no namespace is given, uses the module and function names
+
+    @component('pkg:MyResource')
+    def MyResource(self, name, ..., __opts__):
+        ...
+        return {...outputs}
+    """
+    def _(func):
+        nonlocal namespace
+        if namespace is None:
+            namespace = f"{func.__module__.replace('.', ':')}:{func.__name__}"
+
+        def __init__(self, __name__, *pargs, __opts__=None, **kwargs):
+            super(klass, self).__init__(namespace, __name__, None, __opts__)
+            futures = {}
+            logger.debug("Building outputs")
+            for name in outputs:
+                futures[name] = asyncio.get_event_loop().create_future()
+                setattr(self, name, FauxOutput(futures[name]))
+
+            @task
+            async def inittask():
+                logger.debug("calling init func %r", func)
+                try:
+                    outs = await unwrap(func(self, __name__, *pargs, __opts__=__opts__, **kwargs))
+                except Exception as e:
+                    for f in futures.values():
+                        f.set_exception(e)
+                    raise
+                else:
+                    logger.debug(f"processing outs {outs!r}")
+                    if outs is None:
+                        outs = {}
+                    # TOOD: Filter for just the outputs
+                    self.register_outputs(outs)
+                    for name, value in outs.items():
+                        if name in futures:
+                            futures[name].set_result(value)
+                        else:
+                            setattr(self, name, value)
+
+            logger.debug("starting task")
+            inittask()
+
+        klass = type(func.__name__, (pulumi.ComponentResource,), {
+            '__init__': __init__,
+            '__doc__': func.__doc__,
+        })
+        return klass
+
+    return _
