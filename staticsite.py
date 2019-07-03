@@ -109,6 +109,7 @@ def StaticSite(self, name, domain, zone, content_dir, __opts__):
         f"{name}-policy",
         bucket=bucket_name,
         policy=bucket_name.apply(public_read_policy_for_bucket),
+        **opts(parent=web_bucket),
     )
 
     cert = Certificate(
