@@ -1,5 +1,5 @@
 import pulumi
-from utils import opts, FauxOutput
+from putils import opts, FauxOutput
 from staticsite import StaticSite
 from levents import Package
 from pulumi_aws import route53

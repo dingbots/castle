@@ -5,7 +5,7 @@ from pathlib import Path
 from pulumi import FileAsset
 from pulumi_aws import s3, route53, acm, cloudfront
 
-from utils import component, opts
+from putils import component, opts
 
 
 def public_read_policy_for_bucket(bucket_name):
