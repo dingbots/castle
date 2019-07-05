@@ -145,6 +145,19 @@ def task(func):
     return wrapper
 
 
+def background(func):
+    """
+    Turns a synchronous function into an async one by running it in a
+    background thread.
+    """
+    @functools.wraps(func)
+    def wrapper(*pargs, **kwargs):
+        loop = asyncio.get_running_loop()
+        return loop.run_in_executor(None, functools.partial(func, *pargs, **kwargs))
+
+    return wrapper
+
+
 class FauxOutput:
     """
     Acts like an Output-like for plain coroutines.
@@ -219,7 +232,6 @@ def component(namespace=None, outputs=()):
                     # Process the returned outputs
                     if outs is None:
                         outs = {}
-                    # TOOD: Filter for just the outputs
                     self.register_outputs(outs)
                     for name, value in outs.items():
                         if name in futures:
