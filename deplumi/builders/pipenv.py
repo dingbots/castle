@@ -8,7 +8,7 @@ import zipfile
 
 import pulumi
 
-from utils import background
+from putils import background
 
 
 class PipenvPackage:

@@ -1,7 +1,7 @@
 import pulumi
 from putils import opts, FauxOutput
 from staticsite import StaticSite
-from levents import Package
+from deplumi import Package
 from pulumi_aws import route53
 
 config = pulumi.Config('castle')
