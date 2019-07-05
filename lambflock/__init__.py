@@ -94,6 +94,7 @@ class PipenvPackage:
             'PIPENV_NOSPIN': '1',
             'PIPENV_PIPFILE': str(self.pipfile),
             'PIPENV_VIRTUALENV': await self.get_builddir(),
+            'PIPENV_VERBOSITY': '-1',
             **os.environ,
         }
         return await self._call_subprocess(
@@ -116,6 +117,8 @@ class PipenvPackage:
             # Only do this on preview. Don't fail an up for this.
             await self._call_pipenv('check')
 
+        # TODO: Use `pipenv lock --requirements` to feed into `pip install --target`
+
     async def build(self):
         """
         Actually build
@@ -137,6 +140,8 @@ class PipenvPackage:
             # TODO: Build archive
             # 1. Recursively copy ziproot into dest
             # 2. Recursively copy self.root into dest
+            # - Ideally, don't include pip, setuptools, or pkg_resources unless specifically asked for
+            #   (It would be Really Cool if pipenv grew a --target)
 
 
 @outputish
@@ -157,7 +162,7 @@ async def build_zip_package(sourcedir):
 
 
 @component(outputs=[])
-def Package(self, name, *, sourcedir, resources=(), __opts__):
+def Package(self, name, *, sourcedir, resources=None, __opts__):
     bucket = get_lambda_bucket(__opts__=__opts__)
     s3.BucketObject(
         f'{name}-code',
@@ -165,3 +170,5 @@ def Package(self, name, *, sourcedir, resources=(), __opts__):
         source=build_zip_package(sourcedir),
         **opts(parent=self),
     )
+    # TODO: Generate role based on resources referenced
+    # NOTE: The role is also based on any EventHandler() declared
