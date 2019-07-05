@@ -7,6 +7,7 @@ import sys
 import asyncio
 import os
 import subprocess
+import zipfile
 
 import pulumi
 from pulumi_aws import s3
@@ -42,6 +43,8 @@ def get_lambda_bucket(region=None, __opts__=None):
             region = getattr(provider, 'region', None)
             pulumi.info(f"Calculated region is {region}")
 
+        # FIXME: This doesn't handle the implicit case.
+
         _lambda_buckets[region] = s3.Bucket(
             f'lambda-bucket-{region}',
             **opts(region=region),
@@ -72,16 +75,6 @@ class PipenvPackage:
         dirname = hashlib.sha3_256(contents).hexdigest()
         return buildroot / dirname
 
-    async def warmup(self):
-        builddir = await self.get_builddir()
-        pulumi.debug(f"Using build dir {builddir}")
-        if not builddir.exists():
-            await self._call_python('-m', 'venv', builddir)
-
-        if pulumi.runtime.is_dry_run():
-            # Only do this on preview. Don't fail an up for this.
-            await self._call_pipenv('check')
-
     async def _call_subprocess(self, *cmd, check=True, **opts):
         cmd = [
             os.fspath(part) if hasattr(part, '__fspath__') else part
@@ -110,6 +103,41 @@ class PipenvPackage:
             **opts,
         )
 
+    async def warmup(self):
+        """
+        Do pre-build prep
+        """
+        builddir = await self.get_builddir()
+        pulumi.debug(f"Using build dir {builddir}")
+        if not builddir.exists():
+            await self._call_python('-m', 'venv', builddir)
+
+        if pulumi.runtime.is_dry_run():
+            # Only do this on preview. Don't fail an up for this.
+            await self._call_pipenv('check')
+
+    async def build(self):
+        """
+        Actually build
+        """
+        builddir = await self.get_builddir()
+        # FIXME: Actually compute this
+        ziproot = builddir / 'lib' / 'python3.7' / 'site-packages'
+
+        dest = builddir / 'bundle.zip'
+
+        await self._real_build(builddir, ziproot, dest)
+
+        return dest
+
+    @background
+    def _real_build(self, builddir, ziproot, dest):
+        with zipfile.ZipFile(dest, 'w') as zf:
+            ...
+            # TODO: Build archive
+            # 1. Recursively copy ziproot into dest
+            # 2. Recursively copy self.root into dest
+
 
 @outputish
 async def build_zip_package(sourcedir):
@@ -122,7 +150,10 @@ async def build_zip_package(sourcedir):
     # Do any preperatory stuff
     await package.warmup()
 
-    return pulumi.StringAsset("")
+    # Actually build the zip
+    bundle = await package.build()
+
+    return pulumi.FileAsset(os.fspath(bundle))
 
 
 @component(outputs=[])
