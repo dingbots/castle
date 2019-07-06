@@ -121,3 +121,9 @@ class FauxOutput:
 
     def __await__(self):
         return self._value.__await__()
+
+    def future(self):
+        """
+        Get an awaitable for the boxed value.
+        """
+        return self._value
