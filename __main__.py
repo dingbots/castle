@@ -1,7 +1,7 @@
 import pulumi
 from putils import opts, FauxOutput
 from staticsite import StaticSite
-from deplumi import Package, RoutingGateway
+from deplumi import Package, AwsgiHandler
 from pulumi_aws import route53, s3
 
 config = pulumi.Config('castle')
@@ -30,8 +30,10 @@ spam = Package(
     }
 )
 
-with RoutingGateway('ApiService') as routes:
-    routes.get('/', spam, 'eggs:main')
-
+AwsgiHandler(
+    'ApiService',
+    package=spam,
+    func='__main__:main',
+)
 
 pulumi.export('website',  site.url)

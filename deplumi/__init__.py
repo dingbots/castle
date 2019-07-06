@@ -5,17 +5,15 @@ from pathlib import Path
 import os
 
 import pulumi
-from pulumi_aws import s3
+from pulumi_aws import s3, apigateway, lambda_
 
-from putils import opts, component, get_provider_for_region, outputish
+from putils import opts, Component, component, get_provider_for_region, outputish
 
 from .builders.pipenv import PipenvPackage
 from .resourcegen import ResourceGenerator
 from .rolegen import generate_role
 
-from .gateway import RoutingGateway
-
-__all__ = 'Package', 'EventHandler', 'RoutingGateway',
+__all__ = 'Package', 'EventHandler', 'AwsgiHandler',
 
 # Requirements:
 #  * EventHandler(resource, event, package, func)
@@ -73,43 +71,70 @@ async def build_zip_package(sourcedir, resgen):
     return pulumi.FileAsset(os.fspath(bundle))
 
 
-@component(outputs=['funcargs', 'bucket', 'object', 'role', '_resources'])
-def Package(self, name, *, sourcedir, resources=None, __opts__):
-    if resources is None:
-        resources = {}
-    resgen = ResourceGenerator(resources)
-    bucket = get_lambda_bucket(__opts__=__opts__)
-    bobj = s3.BucketObject(
-        f'{name}-code',
-        bucket=bucket.id,
-        source=build_zip_package(sourcedir, resgen),
-        **opts(parent=self),
-    )
+class Package(Component, outputs=['funcargs', 'bucket', 'object', 'role', '_resources']):
+    def set_up(self, name, *, sourcedir, resources=None, __opts__):
+        if resources is None:
+            resources = {}
+        resgen = ResourceGenerator(resources)
+        bucket = get_lambda_bucket(__opts__=__opts__)
+        bobj = s3.BucketObject(
+            f'{name}-code',
+            bucket=bucket.id,
+            source=build_zip_package(sourcedir, resgen),
+            **opts(parent=self),
+        )
 
-    role = generate_role(
-        f'{name}-role',
-        {
-            rname: (res, ...)  # Ask for basic RW permissions (not manage)
-            for rname, res in resources.items()
-        },
-        **opts(parent=self)
-    )
+        role = generate_role(
+            f'{name}-role',
+            {
+                rname: (res, ...)  # Ask for basic RW permissions (not manage)
+                for rname, res in resources.items()
+            },
+            **opts(parent=self)
+        )
 
-    return {
-        'bucket': bucket,
-        'object': bobj,
-        'role': role,
-        'funcargs': {
-            's3_bucket': bucket.bucket,
-            's3_key': bobj.key,
-            's3_object_version': bobj.version_id,
-            'runtime': 'python3.7',
-            'role': role.arn,
-        },
-        '_resources': list(resources.values()),  # This should only be used internally
-    }
+        return {
+            'bucket': bucket,
+            'object': bobj,
+            'role': role,
+            '_resources': list(resources.values()),  # This should only be used internally
+        }
+
+    def function(self, name, func, **kwargs):
+        return lambda_.Function(
+            f'{name}',
+            handler=func,
+            s3_bucket=self.bucket.bucket,
+            s3_key=self.object.key,
+            s3_object_version=self.object.version_id,
+            runtime='python3.7',
+            role=self.role.arn,
+            **kwargs,
+        )
 
 
 @component(outputs=[])
 def EventHandler(self, name, resource, event, package, func, __opts__):
+    """
+    Define a handler to process an event produced by a resource
+    """
     ...
+
+
+@component(outputs=[])
+def AwsgiHandler(self, name, package, func, __opts__, **lambdaargs):
+    """
+    Define a handler to accept requests, using awsgi
+    """
+    func = package.function(f"{name}-function", func, **lambdaargs, **opts(parent=self))
+    action = ...  # apigateway.Action, pointing to the lambda
+    calling_role = ...  # iam.Role, allowing API Gateway to call the lambda
+    integ = apigateway.Integration(
+        f"{name}-integration",
+        type='AWS_PROXY',
+        http_method='ANY',
+        # resource_id=TODO,
+        # ui=action.arn,
+        # credentials=calling_role.arn,
+        **opts(parent=self)
+    )
