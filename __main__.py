@@ -2,7 +2,7 @@ import pulumi
 from putils import opts, FauxOutput
 from staticsite import StaticSite
 from deplumi import Package
-from pulumi_aws import route53
+from pulumi_aws import route53, s3
 
 config = pulumi.Config('castle')
 
@@ -17,9 +17,17 @@ site = StaticSite(
     **opts(),
 )
 
+buf = s3.Bucket(
+    'MyBucket',
+    **opts(),
+)
+
 p = Package(
     'SpamPack',
     sourcedir='spam',
+    resources={
+        'buffer': buf,
+    }
 )
 
 pulumi.export('website',  site.url)
