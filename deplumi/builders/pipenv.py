@@ -13,8 +13,9 @@ from putils import background
 
 
 class PipenvPackage:
-    def __init__(self, root):
+    def __init__(self, root, resgen):
         self.root = Path(root).resolve()
+        self.resgen = resgen
 
     @property
     def pipfile(self):
@@ -70,9 +71,10 @@ class PipenvPackage:
         builddir = await self.get_builddir()
         pulumi.debug(f"Using build dir {builddir}")
 
-        if pulumi.runtime.is_dry_run():
-            # Only do this on preview. Don't fail an up for this.
-            await self._call_pipenv('check')
+        # PyUp has terrible uptime, so this breaks a lot
+        # if pulumi.runtime.is_dry_run():
+        #     # Only do this on preview. Don't fail an up for this.
+        #     await self._call_pipenv('check')
 
         if not builddir.exists():
             builddir.mkdir()
@@ -89,16 +91,23 @@ class PipenvPackage:
         Actually build
         """
         builddir = await self.get_builddir()
-        ziproot = builddir / 'pkgs'
+        ziproot = builddir
 
+        # Doing this instead of a NamedTempFile because we don't know what the
+        # lifetime of the file needs to be.
         dest = str(builddir) + '.zip'
 
-        await self._build_zip(dest, ziproot, self.root)
+        await self._build_zip(
+            dest, ziproot, self.root,
+            virtuals={
+                '__res__.py': await self.resgen.build(),
+            }
+        )
 
         return dest
 
     @background
-    def _build_zip(self, dest, *sources, filter=None):
+    def _build_zip(self, dest, *sources, virtuals={}, filter=None):
         with zipfile.ZipFile(dest, 'w') as zf:
             for source in sources:
                 source = Path(source)
@@ -106,3 +115,5 @@ class PipenvPackage:
                     arcname = child.relative_to(source)
                     if filter is None or filter(arcname):
                         zf.write(child, arcname.as_posix())
+            for name, data in virtuals.items():
+                zf.writestr(name, data)

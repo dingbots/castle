@@ -10,6 +10,7 @@ from pulumi_aws import s3
 from putils import opts, component, get_provider_for_region, outputish
 
 from .builders.pipenv import PipenvPackage
+from .resourcegen import ResourceGenerator
 
 __all__ = 'Package', 'EventHandler'
 
@@ -53,10 +54,10 @@ def get_lambda_bucket(region=None, __opts__=None):
 
 
 @outputish
-async def build_zip_package(sourcedir):
+async def build_zip_package(sourcedir, resgen):
     sourcedir = Path(sourcedir)
     if (sourcedir / 'Pipfile').is_file():
-        package = PipenvPackage(sourcedir)
+        package = PipenvPackage(sourcedir, resgen)
     else:
         raise OSError("Unable to detect package type")
 
@@ -69,17 +70,26 @@ async def build_zip_package(sourcedir):
     return pulumi.FileAsset(os.fspath(bundle))
 
 
-@component(outputs=[])
+@component(outputs=['bucket', 'object', '_resources'])
 def Package(self, name, *, sourcedir, resources=None, __opts__):
+    if resources is None:
+        resources = {}
+    resgen = ResourceGenerator(resources)
     bucket = get_lambda_bucket(__opts__=__opts__)
-    s3.BucketObject(
+    bobj = s3.BucketObject(
         f'{name}-code',
         bucket=bucket.id,
-        source=build_zip_package(sourcedir),
+        source=build_zip_package(sourcedir, resgen),
         **opts(parent=self),
     )
     # TODO: Generate role based on resources referenced
     # NOTE: The role is also based on any EventHandler() declared
+
+    return {
+        'bucket': bucket,
+        'object': bobj,
+        '_resources': list(resources.values()),  # This should only be used internally
+    }
 
 
 @component(outputs=[])
