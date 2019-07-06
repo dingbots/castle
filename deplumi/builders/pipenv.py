@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import zipfile
 
 import pulumi
@@ -68,35 +69,40 @@ class PipenvPackage:
         """
         builddir = await self.get_builddir()
         pulumi.debug(f"Using build dir {builddir}")
-        if not builddir.exists():
-            await self._call_python('-m', 'venv', builddir)
 
         if pulumi.runtime.is_dry_run():
             # Only do this on preview. Don't fail an up for this.
             await self._call_pipenv('check')
 
-        # TODO: Use `pipenv lock --requirements` to feed into `pip install --target`
+        if not builddir.exists():
+            builddir.mkdir()
+            out, _ = await self._call_pipenv('lock', '--requirements', stdout=subprocess.PIPE)
+            with tempfile.NamedTemporaryFile() as ntf:
+                ntf.write(out)
+                ntf.flush()
+                await self._call_subprocess(
+                    'pip', 'install', '--target', builddir, '-r', ntf.name,
+                )
 
     async def build(self):
         """
         Actually build
         """
         builddir = await self.get_builddir()
-        # FIXME: Actually compute this
-        ziproot = builddir / 'lib' / 'python3.7' / 'site-packages'
+        ziproot = builddir / 'pkgs'
 
-        dest = builddir / 'bundle.zip'
+        dest = str(builddir) + '.zip'
 
-        await self._build_zip(dest, ziproot, builddir)
+        await self._build_zip(dest, ziproot, self.root)
 
         return dest
 
     @background
-    def _build_zip(self, dest, *dirs):
+    def _build_zip(self, dest, *sources, filter=None):
         with zipfile.ZipFile(dest, 'w') as zf:
-            ...
-            # TODO: Build archive
-            # 1. Recursively copy ziproot into dest
-            # 2. Recursively copy self.root into dest
-            # - Ideally, don't include pip, setuptools, or pkg_resources unless specifically asked for
-            #   (It would be Really Cool if pipenv grew a --target)
+            for source in sources:
+                source = Path(source)
+                for child in source.rglob('*'):
+                    arcname = child.relative_to(source)
+                    if filter is None or filter(arcname):
+                        zf.write(child, arcname.as_posix())

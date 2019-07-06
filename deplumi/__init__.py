@@ -11,6 +11,8 @@ from putils import opts, component, get_provider_for_region, outputish
 
 from .builders.pipenv import PipenvPackage
 
+__all__ = 'Package', 'EventHandler'
+
 # Requirements:
 #  * EventHandler(resource, event, package, func)
 #    - Wires up the function (in the package) to an event on a specific resource
@@ -78,3 +80,8 @@ def Package(self, name, *, sourcedir, resources=None, __opts__):
     )
     # TODO: Generate role based on resources referenced
     # NOTE: The role is also based on any EventHandler() declared
+
+
+@component(outputs=[])
+def EventHandler(self, name, resource, event, package, func, __opts__):
+    ...
