@@ -96,6 +96,21 @@ class FauxOutput:
     def __init__(self, coro):
         self._value = mkfuture(coro)
 
+    @classmethod
+    def from_nothing(cls):
+        """
+        Return a FauxOutput and the future that drives it
+        """
+        fut = asyncio.get_event_loop().create_future()
+        return cls(fut), fut
+
+    @classmethod
+    def from_value(cls, value):
+        """
+        Return a FauxOutput from a simple value
+        """
+        return cls(value)  # __init__ calls mkfuture, which handles this for us
+
     @outputish
     async def __getitem__(self, key):
         """
