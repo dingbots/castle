@@ -12,7 +12,9 @@ from putils import opts, component, get_provider_for_region, outputish
 from .builders.pipenv import PipenvPackage
 from .resourcegen import ResourceGenerator
 
-__all__ = 'Package', 'EventHandler'
+from .gateway import RoutingGateway
+
+__all__ = 'Package', 'EventHandler', 'RoutingGateway',
 
 # Requirements:
 #  * EventHandler(resource, event, package, func)
@@ -70,7 +72,7 @@ async def build_zip_package(sourcedir, resgen):
     return pulumi.FileAsset(os.fspath(bundle))
 
 
-@component(outputs=['bucket', 'object', '_resources'])
+@component(outputs=['funcargs', 'bucket', 'object', 'role', '_resources'])
 def Package(self, name, *, sourcedir, resources=None, __opts__):
     if resources is None:
         resources = {}
@@ -83,11 +85,19 @@ def Package(self, name, *, sourcedir, resources=None, __opts__):
         **opts(parent=self),
     )
     # TODO: Generate role based on resources referenced
-    # NOTE: The role is also based on any EventHandler() declared
+    role = None
 
     return {
         'bucket': bucket,
         'object': bobj,
+        'role': role,
+        'funcargs': {
+            's3_bucket': bucket.bucket,
+            's3_key': bobj.key,
+            's3_object_version': bobj.version_id,
+            'runtime': 'python37',
+            'role': role,
+        },
         '_resources': list(resources.values()),  # This should only be used internally
     }
 
