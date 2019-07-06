@@ -20,6 +20,15 @@ def _get_root(relpath):
         return p[-2]
 
 
+def mkzinfo(name, contents):
+    """
+    Generate a zinfo for a virtual name
+    """
+    zi = zipfile.ZipInfo(name)
+    # date_time defaults to minimum date
+    return zi
+
+
 class PipenvPackage:
     def __init__(self, root, resgen):
         self.root = Path(root).resolve()
@@ -137,4 +146,5 @@ class PipenvPackage:
                     if filter is None or filter(arcname):
                         zf.write(child, arcname.as_posix())
             for name, data in virtuals.items():
-                zf.writestr(name, data)
+                zi = mkzinfo(name, data)
+                zf.writestr(zi, data)
