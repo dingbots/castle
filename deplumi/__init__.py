@@ -11,6 +11,7 @@ from putils import opts, component, get_provider_for_region, outputish
 
 from .builders.pipenv import PipenvPackage
 from .resourcegen import ResourceGenerator
+from .rolegen import generate_role
 
 from .gateway import RoutingGateway
 
@@ -84,8 +85,15 @@ def Package(self, name, *, sourcedir, resources=None, __opts__):
         source=build_zip_package(sourcedir, resgen),
         **opts(parent=self),
     )
-    # TODO: Generate role based on resources referenced
-    role = None
+
+    role = generate_role(
+        f'{name}-role',
+        {
+            rname: (res, ...)  # Ask for basic RW permissions (not manage)
+            for rname, res in resources.items()
+        },
+        **opts(parent=self)
+    )
 
     return {
         'bucket': bucket,
@@ -95,8 +103,8 @@ def Package(self, name, *, sourcedir, resources=None, __opts__):
             's3_bucket': bucket.bucket,
             's3_key': bobj.key,
             's3_object_version': bobj.version_id,
-            'runtime': 'python37',
-            'role': role,
+            'runtime': 'python3.7',
+            'role': role.arn,
         },
         '_resources': list(resources.values()),  # This should only be used internally
     }
