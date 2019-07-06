@@ -12,6 +12,14 @@ import pulumi
 from putils import background
 
 
+def _get_root(relpath):
+    p = list(relpath.parents)
+    if len(p) == 1:
+        return relpath
+    else:
+        return p[-2]
+
+
 class PipenvPackage:
     def __init__(self, root, resgen):
         self.root = Path(root).resolve()
@@ -101,10 +109,23 @@ class PipenvPackage:
             dest, ziproot, self.root,
             virtuals={
                 '__res__.py': await self.resgen.build(),
-            }
+            },
+            filter=self._filter,
         )
 
         return dest
+
+    def _filter(self, path):
+        root = _get_root(path)
+        if root.name.endswith('.dist-info'):
+            # Unnecessary metadata
+            return False
+        # FIXME: Scan for all the dependencies of boto3 recursively
+        elif root.name in ('boto3', 'botocore'):
+            # These are provided by the runtime
+            return False
+        else:
+            return True
 
     @background
     def _build_zip(self, dest, *sources, virtuals={}, filter=None):
