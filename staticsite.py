@@ -46,7 +46,7 @@ def Certificate(self, name, domain, zone, __opts__):
         f"{name}-certificate",
         domain_name=domain,
         validation_method="DNS",
-        **opts(parent=self, region='us-east-1'),
+        **opts(parent=self),
     )
 
     # TOOD: Multiple DVOs
@@ -65,7 +65,7 @@ def Certificate(self, name, domain, zone, __opts__):
         f"{name}-validation",
         certificate_arn=cert.arn,
         validation_record_fqdns=[record.fqdn],
-        **opts(parent=self, region="us-east-1"),
+        **opts(parent=self),
     )
 
     return {
@@ -116,7 +116,7 @@ def StaticSite(self, name, domain, zone, content_dir, __opts__):
         f"{name}-cert",
         domain=domain,
         zone=zone,
-        **opts(parent=self),
+        **opts(parent=self, region='us-east-1'),
     )
 
     distro = cloudfront.Distribution(
