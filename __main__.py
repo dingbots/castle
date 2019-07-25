@@ -30,10 +30,15 @@ spam = Package(
     }
 )
 
+api_domain = f'api.{config.require("domain")}'
+
 AwsgiHandler(
-    'ApiService',
+    'SpamService',
+    domain=api_domain,
+    zone=zone,
     package=spam,
     func='__main__:main',
 )
 
 pulumi.export('website',  site.url)
+pulumi.export('api_url',  f"https://{api_domain}/")

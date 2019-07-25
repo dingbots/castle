@@ -5,7 +5,9 @@ from pathlib import Path
 import os
 
 import pulumi
-from pulumi_aws import s3, apigateway, lambda_
+from pulumi_aws import (
+    s3, apigateway, lambda_, route53, acm
+)
 
 from putils import (
     opts, Component, component, outputish, get_region
@@ -40,6 +42,7 @@ def get_lambda_bucket(region=None, resource=None):
     if region not in _lambda_buckets:
         _lambda_buckets[region] = s3.Bucket(
             f'lambda-bucket-{region}',
+            region=region,
             **opts(region=region),
         )
 
@@ -113,20 +116,129 @@ def EventHandler(self, name, resource, event, package, func, __opts__):
     ...
 
 
+@component(outputs=['cert', 'cert_arn'])
+def Certificate(self, name, domain, zone, __opts__):
+    """
+    Gets a TLS certifcate for the given domain, using ACM and DNS validation.
+
+    This will be in us-east-1, suitable for CloudFront
+    """
+    cert = acm.Certificate(
+        f"{name}-certificate",
+        domain_name=domain,
+        validation_method="DNS",
+        **opts(parent=self),
+    )
+
+    # TOOD: Multiple DVOs
+    dvo = cert.domain_validation_options[0]
+    record = route53.Record(
+        f"{name}-validation-record",
+        name=dvo['resourceRecordName'],
+        zone_id=zone.zone_id,
+        type=dvo['resourceRecordType'],
+        records=[dvo['resourceRecordValue']],
+        ttl=10*60,  # 10 minutes
+        **opts(parent=self),
+    )
+
+    validation = acm.CertificateValidation(
+        f"{name}-validation",
+        certificate_arn=cert.arn,
+        validation_record_fqdns=[record.fqdn],
+        **opts(parent=self),
+    )
+
+    return {
+        'cert': cert,
+        'cert_arn': validation.certificate_arn,
+    }
+
+
 @component(outputs=[])
-def AwsgiHandler(self, name, package, func, __opts__, **lambdaargs):
+def AwsgiHandler(self, name, zone, domain, package, func, __opts__, **lambdaargs):
     """
     Define a handler to accept requests, using awsgi
     """
     func = package.function(f"{name}-function", func, **lambdaargs, **opts(parent=self))
-    action = ...  # apigateway.Action, pointing to the lambda
-    calling_role = ...  # iam.Role, allowing API Gateway to call the lambda
-    integ = apigateway.Integration(
-        f"{name}-integration",
-        type='AWS_PROXY',
-        http_method='ANY',
-        # resource_id=TODO,
-        # ui=action.arn,
-        # credentials=calling_role.arn,
+
+    @func.arn.apply
+    def lambdapath(arn):
+        return f"arn:aws:apigateway:{get_region(self)}:lambda:path/2015-03-31/functions/{arn}/invocations"
+
+    api = apigateway.RestApi(f"{name}-api", **opts(parent=self))
+
+    resource = apigateway.Resource(
+        f"{name}-resource",
+        rest_api=api,
+        path_part="{proxy+}",
+        parent_id=api.root_resource_id,
         **opts(parent=self)
+    )
+
+    method = apigateway.Method(
+        f"{name}-method",
+        rest_api=api,
+        resource_id=resource.id,
+        http_method="ANY",
+        authorization="NONE",
+        **opts(parent=self)
+    )
+
+    integration = apigateway.Integration(
+        f"{name}-integration",
+        rest_api=api,
+        resource_id=resource.id,
+        http_method="ANY",
+        type="AWS_PROXY",
+        integration_http_method="POST",
+        passthrough_behavior="WHEN_NO_MATCH",
+        uri=lambdapath,
+        **opts(parent=self, depends_on=[method])
+    )
+
+    deployment = apigateway.Deployment(
+        f"{name}-deployment",
+        rest_api=api,
+        **opts(depends_on=[integration], parent=self)
+    )
+
+    cert = Certificate(
+        f"{name}-cert",
+        domain=domain,
+        zone=zone,
+        **opts(parent=self)
+    )
+
+    domainname = apigateway.DomainName(
+        f"{name}-domain",
+        domain_name=domain,
+        regional_certificate_arn=cert.cert_arn,
+        # security_policy="TLS_1_2",
+        endpoint_configuration={
+            'types': 'REGIONAL',
+        },
+        **opts(parent=self)
+    )
+
+    bpm = apigateway.BasePathMapping(
+        f"{name}-mapping",
+        rest_api=api,
+        domain_name=domain,
+        **opts(depends_on=[deployment, domainname], parent=self)
+    )
+
+    route53.Record(
+        f"{name}-record",
+        name=domain,
+        zone_id=zone.zone_id,
+        type='A',
+        aliases=[
+            {
+                'name': domainname.regional_domain_name,
+                'zone_id': domainname.regional_zone_id,
+                'evaluate_target_health': True,
+            },
+        ],
+        **opts(parent=self),
     )
