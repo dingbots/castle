@@ -126,6 +126,8 @@ def StaticSite(self, name, domain, zone, content_dir, __opts__):
         # Required if you want to access the distribution via config.targetDomain as well.
         aliases=[domain],
 
+        is_ipv6_enabled=True,
+
         # We only specify one origin for this distribution, the S3 content bucket.
         origins=[
             {
@@ -193,10 +195,25 @@ def StaticSite(self, name, domain, zone, content_dir, __opts__):
     )
 
     route53.Record(
-        f"{name}-record",
+        f"{name}-record-a",
         name=domain,
         zone_id=zone.zone_id,
         type='A',
+        aliases=[
+            {
+                'name': distro.domain_name,
+                'zone_id': distro.hosted_zone_id,
+                'evaluate_target_health': True,
+            },
+        ],
+        **opts(parent=self),
+    )
+
+    route53.Record(
+        f"{name}-record-aaaa",
+        name=domain,
+        zone_id=zone.zone_id,
+        type='AAAA',
         aliases=[
             {
                 'name': distro.domain_name,
