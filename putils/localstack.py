@@ -54,6 +54,7 @@ def get_provider_for_region(region):
         # Using localstack
         return PROVIDER
 
+    assert isinstance(region, str)
     if region not in _provider_cache:
         _provider_cache[region] = pulumi_aws.Provider(
             region,

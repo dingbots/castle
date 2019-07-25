@@ -7,7 +7,9 @@ import os
 import pulumi
 from pulumi_aws import s3, apigateway, lambda_
 
-from putils import opts, Component, component, get_provider_for_region, outputish
+from putils import (
+    opts, Component, component, outputish, get_region
+)
 
 from .builders.pipenv import PipenvPackage
 from .resourcegen import ResourceGenerator
@@ -28,24 +30,14 @@ __all__ = 'Package', 'EventHandler', 'AwsgiHandler',
 _lambda_buckets = {}
 
 
-def get_lambda_bucket(region=None, __opts__=None):
+def get_lambda_bucket(region=None, resource=None):
     """
     Gets the shared bucket for lambda packages for the given region
     """
-    provider = None
-    if __opts__ is not None:
-        provider = getattr(__opts__, 'provider', None)
-        pulumi.info(f"Found provider {provider}")
+    if resource is not None:
+        region = get_region(resource)
 
     if region not in _lambda_buckets:
-        if provider is None and region is not None:
-            pulumi.info(f"Given region is {region}")
-            provider = get_provider_for_region(region)
-            region = getattr(provider, 'region', None)
-            pulumi.info(f"Calculated region is {region}")
-
-        # FIXME: This doesn't handle the implicit case.
-
         _lambda_buckets[region] = s3.Bucket(
             f'lambda-bucket-{region}',
             **opts(region=region),
@@ -76,7 +68,7 @@ class Package(Component, outputs=['funcargs', 'bucket', 'object', 'role', '_reso
         if resources is None:
             resources = {}
         resgen = ResourceGenerator(resources)
-        bucket = get_lambda_bucket(__opts__=__opts__)
+        bucket = get_lambda_bucket(resource=self)
         bobj = s3.BucketObject(
             f'{name}-code',
             bucket=bucket.id,
