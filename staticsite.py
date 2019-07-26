@@ -3,9 +3,9 @@ import mimetypes
 from pathlib import Path
 
 from pulumi import FileAsset
-from pulumi_aws import s3, route53, acm, cloudfront
+from pulumi_aws import s3, route53, cloudfront
 
-from putils import component, opts
+from putils import component, opts, Certificate, a_aaaa
 
 
 def public_read_policy_for_bucket(bucket_name):
@@ -33,45 +33,6 @@ def walk(starting):
         absp = p.absolute()
         relp = absp.relative_to(starting)
         yield absp, relp
-
-
-@component(outputs=['cert', 'cert_arn'])
-def Certificate(self, name, domain, zone, __opts__):
-    """
-    Gets a TLS certifcate for the given domain, using ACM and DNS validation.
-
-    This will be in us-east-1, suitable for CloudFront
-    """
-    cert = acm.Certificate(
-        f"{name}-certificate",
-        domain_name=domain,
-        validation_method="DNS",
-        **opts(parent=self),
-    )
-
-    # TOOD: Multiple DVOs
-    dvo = cert.domain_validation_options[0]
-    record = route53.Record(
-        f"{name}-validation-record",
-        name=dvo['resourceRecordName'],
-        zone_id=zone.zone_id,
-        type=dvo['resourceRecordType'],
-        records=[dvo['resourceRecordValue']],
-        ttl=10*60,  # 10 minutes
-        **opts(parent=self),
-    )
-
-    validation = acm.CertificateValidation(
-        f"{name}-validation",
-        certificate_arn=cert.arn,
-        validation_record_fqdns=[record.fqdn],
-        **opts(parent=self),
-    )
-
-    return {
-        'cert': cert,
-        'cert_arn': validation.certificate_arn,
-    }
 
 
 @component(outputs=['url'])
@@ -194,26 +155,10 @@ def StaticSite(self, name, domain, zone, content_dir, __opts__):
         **opts(parent=self),
     )
 
-    route53.Record(
-        f"{name}-record-a",
+    a_aaaa(
+        f"{name}-record",
         name=domain,
         zone_id=zone.zone_id,
-        type='A',
-        aliases=[
-            {
-                'name': distro.domain_name,
-                'zone_id': distro.hosted_zone_id,
-                'evaluate_target_health': True,
-            },
-        ],
-        **opts(parent=self),
-    )
-
-    route53.Record(
-        f"{name}-record-aaaa",
-        name=domain,
-        zone_id=zone.zone_id,
-        type='AAAA',
         aliases=[
             {
                 'name': distro.domain_name,

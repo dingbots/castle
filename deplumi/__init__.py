@@ -6,11 +6,11 @@ import os
 
 import pulumi
 from pulumi_aws import (
-    s3, apigateway, lambda_, route53, acm
+    s3, apigateway, lambda_, route53
 )
 
 from putils import (
-    opts, Component, component, outputish, get_region
+    opts, Component, component, outputish, get_region, Certificate, a_aaaa
 )
 
 from .builders.pipenv import PipenvPackage
@@ -116,45 +116,6 @@ def EventHandler(self, name, resource, event, package, func, __opts__):
     ...
 
 
-@component(outputs=['cert', 'cert_arn'])
-def Certificate(self, name, domain, zone, __opts__):
-    """
-    Gets a TLS certifcate for the given domain, using ACM and DNS validation.
-
-    This will be in us-east-1, suitable for CloudFront
-    """
-    cert = acm.Certificate(
-        f"{name}-certificate",
-        domain_name=domain,
-        validation_method="DNS",
-        **opts(parent=self),
-    )
-
-    # TOOD: Multiple DVOs
-    dvo = cert.domain_validation_options[0]
-    record = route53.Record(
-        f"{name}-validation-record",
-        name=dvo['resourceRecordName'],
-        zone_id=zone.zone_id,
-        type=dvo['resourceRecordType'],
-        records=[dvo['resourceRecordValue']],
-        ttl=10*60,  # 10 minutes
-        **opts(parent=self),
-    )
-
-    validation = acm.CertificateValidation(
-        f"{name}-validation",
-        certificate_arn=cert.arn,
-        validation_record_fqdns=[record.fqdn],
-        **opts(parent=self),
-    )
-
-    return {
-        'cert': cert,
-        'cert_arn': validation.certificate_arn,
-    }
-
-
 @component(outputs=[])
 def AwsgiHandler(self, name, zone, domain, package, func, __opts__, **lambdaargs):
     """
@@ -228,11 +189,10 @@ def AwsgiHandler(self, name, zone, domain, package, func, __opts__, **lambdaargs
         **opts(depends_on=[deployment, domainname], parent=self)
     )
 
-    route53.Record(
+    a_aaaa(
         f"{name}-record",
         name=domain,
         zone_id=zone.zone_id,
-        type='A',
         aliases=[
             {
                 'name': domainname.regional_domain_name,
