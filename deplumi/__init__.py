@@ -127,7 +127,13 @@ def AwsgiHandler(self, name, zone, domain, package, func, __opts__, **lambdaargs
     def lambdapath(arn):
         return f"arn:aws:apigateway:{get_region(self)}:lambda:path/2015-03-31/functions/{arn}/invocations"
 
-    api = apigateway.RestApi(f"{name}-api", **opts(parent=self))
+    api = apigateway.RestApi(
+        f"{name}-api",
+        endpoint_configuration={
+            'types': 'REGIONAL',
+        },
+        **opts(parent=self)
+    )
 
     resource = apigateway.Resource(
         f"{name}-resource",
@@ -161,6 +167,7 @@ def AwsgiHandler(self, name, zone, domain, package, func, __opts__, **lambdaargs
     deployment = apigateway.Deployment(
         f"{name}-deployment",
         rest_api=api,
+        stage_name=pulumi.get_stack(),
         **opts(depends_on=[integration], parent=self)
     )
 
@@ -186,6 +193,7 @@ def AwsgiHandler(self, name, zone, domain, package, func, __opts__, **lambdaargs
         f"{name}-mapping",
         rest_api=api,
         domain_name=domain,
+        stage_name=deployment.stage_name,
         **opts(depends_on=[deployment, domainname], parent=self)
     )
 
