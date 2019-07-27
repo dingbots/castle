@@ -100,6 +100,7 @@ class Package(Component, outputs=['funcargs', 'bucket', 'object', 'role', '_reso
         }
 
     def function(self, name, func, **kwargs):
+        func = func.replace(':', '.')
         return lambda_.Function(
             f'{name}',
             handler=func,
