@@ -43,6 +43,10 @@ def get_lambda_bucket(region=None, resource=None):
         _lambda_buckets[region] = s3.Bucket(
             f'lambda-bucket-{region}',
             region=region,
+            versioning={
+                'enabled': True,
+            },
+            # FIXME: Life cycle rules for expiration
             **opts(region=region),
         )
 
