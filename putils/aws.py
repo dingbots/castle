@@ -1,11 +1,13 @@
+import asyncio
 import os
 
 import pulumi
-from pulumi_aws import acm, route53
+from pulumi_aws import acm, route53, ec2
 
 from .component import component
 from .localstack import opts
-__all__ = 'get_region', 'Certificate', 'a_aaaa'
+from .paio import outputish
+__all__ = 'get_region', 'Certificate', 'a_aaaa', 'get_public_subnets'
 
 
 class NoRegionError:
@@ -77,3 +79,20 @@ def a_aaaa(__name__, *pargs, **kwargs):
     a = route53.Record(f"{__name__}-a", *pargs, type='A', **kwargs)
     aaaa = route53.Record(f"{__name__}-aaaa", *pargs, type='AAAA', **kwargs)
     return a, aaaa
+
+
+@outputish
+async def get_public_subnets(vpc=None, opts=None):
+    """
+    Gets the vpc, public subnets, and if they're IPv6-enabled.
+
+    If no VPC is given, use the default one for the region
+    """
+    if vpc is None:
+        vpc = await ec2.get_vpc(default=True, opts=opts)
+    sub_res = await ec2.get_subnet_ids(vpc_id=vpc.id, opts=opts)
+    subnets = await asyncio.gather(*(ec2.get_subnet(id=id) for id in sub_res.ids))
+
+    # TODO: Filter for public subnets
+
+    return vpc, subnets, bool(vpc.ipv6_cidr_block)

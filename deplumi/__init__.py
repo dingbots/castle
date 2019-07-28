@@ -6,11 +6,12 @@ import os
 
 import pulumi
 from pulumi_aws import (
-    s3, apigateway, lambda_, route53
+    s3, lambda_, elasticloadbalancingv2 as elb, ec2, iam
 )
 
 from putils import (
-    opts, Component, component, outputish, get_region, Certificate, a_aaaa
+    opts, Component, component, outputish, get_region, Certificate, a_aaaa,
+    get_public_subnets,
 )
 
 from .builders.pipenv import PipenvPackage
@@ -101,7 +102,7 @@ class Package(Component, outputs=['funcargs', 'bucket', 'object', 'role', '_reso
 
     def function(self, name, func, **kwargs):
         func = func.replace(':', '.')
-        return lambda_.Function(
+        function = lambda_.Function(
             f'{name}',
             handler=func,
             s3_bucket=self.bucket.bucket,
@@ -111,6 +112,7 @@ class Package(Component, outputs=['funcargs', 'bucket', 'object', 'role', '_reso
             role=self.role.arn,
             **kwargs,
         )
+        return function
 
 
 @component(outputs=[])
@@ -128,53 +130,30 @@ def AwsgiHandler(self, name, zone, domain, package, func, __opts__, **lambdaargs
     """
     func = package.function(f"{name}-function", func, **lambdaargs, **opts(parent=self))
 
-    @func.arn.apply
-    def lambdapath(arn):
-        return f"arn:aws:apigateway:{get_region(self)}:lambda:path/2015-03-31/functions/{arn}/invocations"
-
-    api = apigateway.RestApi(
-        f"{name}-api",
-        endpoint_configuration={
-            'types': 'REGIONAL',
-        },
-        **opts(parent=self)
+    invoke_policy = lambda_.Permission(
+        f'{name}-function-permission',
+        function=func,
+        action='lambda:InvokeFunction',
+        principal='elasticloadbalancing.amazonaws.com',
+        **opts(parent=func)
     )
 
-    resource = apigateway.Resource(
-        f"{name}-resource",
-        rest_api=api,
-        path_part="{proxy+}",
-        parent_id=api.root_resource_id,
-        **opts(parent=self)
-    )
+    netinfo = get_public_subnets(opts=__opts__)
 
-    method = apigateway.Method(
-        f"{name}-method",
-        rest_api=api,
-        resource_id=resource.id,
-        http_method="ANY",
-        authorization="NONE",
-        **opts(parent=self)
-    )
+    @netinfo.apply
+    def vpc_id(info):
+        vpc, subnets, is_v6 = info
+        return vpc.id
 
-    integration = apigateway.Integration(
-        f"{name}-integration",
-        rest_api=api,
-        resource_id=resource.id,
-        http_method="ANY",
-        type="AWS_PROXY",
-        integration_http_method="POST",
-        passthrough_behavior="WHEN_NO_MATCH",
-        uri=lambdapath,
-        **opts(parent=self, depends_on=[method])
-    )
+    @netinfo.apply
+    def netstack(info):
+        vpc, subnets, is_v6 = info
+        return 'dualstack' if is_v6 else 'ipv4'
 
-    deployment = apigateway.Deployment(
-        f"{name}-deployment",
-        rest_api=api,
-        stage_name=pulumi.get_stack(),
-        **opts(depends_on=[integration], parent=self)
-    )
+    @netinfo.apply
+    def subnet_ids(info):
+        vpc, subnets, is_v6 = info
+        return [sn.id for sn in subnets]
 
     cert = Certificate(
         f"{name}-cert",
@@ -183,23 +162,113 @@ def AwsgiHandler(self, name, zone, domain, package, func, __opts__, **lambdaargs
         **opts(parent=self)
     )
 
-    domainname = apigateway.DomainName(
-        f"{name}-domain",
-        domain_name=domain,
-        regional_certificate_arn=cert.cert_arn,
-        # security_policy="TLS_1_2",
-        endpoint_configuration={
-            'types': 'REGIONAL',
+    # TODO: Cache this
+    sg = ec2.SecurityGroup(
+        f"{name}-sg",
+        vpc_id=vpc_id,
+        ingress=[
+            {
+                'from_port': 80,
+                'to_port': 80,
+                'protocol': "tcp",
+                'cidr_blocks': ['0.0.0.0/0'],
+            },
+            {
+                'from_port': 443,
+                'to_port': 443,
+                'protocol': "tcp",
+                'cidr_blocks': ['0.0.0.0/0'],
+            },
+            {
+                'from_port': 80,
+                'to_port': 80,
+                'protocol': "tcp",
+                'ipv6_cidr_blocks': ['::/0'],
+            },
+            {
+                'from_port': 443,
+                'to_port': 443,
+                'protocol': "tcp",
+                'ipv6_cidr_blocks': ['::/0'],
+            },
+        ],
+        egress=[
+            {
+                'from_port': 0,
+                'to_port': 0,
+                'protocol': "-1",
+                'cidr_blocks': ['0.0.0.0/0'],
+                'ipv6_cidr_blocks': ['::/0'],
+            },
+            {
+                'from_port': 0,
+                'to_port': 0,
+                'protocol': "-1",
+                'ipv6_cidr_blocks': ['::/0'],
+            },
+        ],
+        **opts(parent=self)
+    )
+
+    alb = elb.LoadBalancer(
+        f"{name}-alb",
+        load_balancer_type='application',
+        subnets=subnet_ids,
+        ip_address_type=netstack,
+        security_groups=[sg],
+        enable_http2=True,
+        **opts(parent=self)
+    )
+
+    target = elb.TargetGroup(
+        f"{name}-target",
+        target_type='lambda',
+        lambda_multi_value_headers_enabled=False,  # AWSGI does not support this yet
+        health_check={
+            'enabled': True,
+            'path': '/',
+            'matcher': '200-299',
+            'interval': 30,
+            'timeout': 5,
         },
         **opts(parent=self)
     )
 
-    bpm = apigateway.BasePathMapping(
-        f"{name}-mapping",
-        rest_api=api,
-        domain_name=domain,
-        stage_name=deployment.stage_name,
-        **opts(depends_on=[deployment, domainname], parent=self)
+    elb.TargetGroupAttachment(
+        f"{name}-target-func",
+        target_group_arn=target.arn,
+        target_id=func.arn,
+        **opts(depends_on=[invoke_policy], parent=self)
+    )
+
+    elb.Listener(
+        f"{name}-http",
+        load_balancer_arn=alb.arn,
+        port=80,
+        protocol='HTTP',
+        default_actions=[
+            {
+                'type': 'forward',
+                'target_group_arn': target.arn,
+            }
+        ],
+        **opts(parent=self)
+    )
+
+    elb.Listener(
+        f"{name}-https",
+        load_balancer_arn=alb.arn,
+        port=443,
+        protocol='HTTPS',
+        ssl_policy='ELBSecurityPolicy-TLS-1-2-Ext-2018-06',
+        certificate_arn=cert.cert_arn,
+        default_actions=[
+            {
+                'type': 'forward',
+                'target_group_arn': target.arn,
+            }
+        ],
+        **opts(parent=self)
     )
 
     a_aaaa(
@@ -208,8 +277,8 @@ def AwsgiHandler(self, name, zone, domain, package, func, __opts__, **lambdaargs
         zone_id=zone.zone_id,
         aliases=[
             {
-                'name': domainname.regional_domain_name,
-                'zone_id': domainname.regional_zone_id,
+                'name': alb.dns_name,
+                'zone_id': alb.zone_id,
                 'evaluate_target_health': True,
             },
         ],
