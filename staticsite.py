@@ -3,7 +3,7 @@ import mimetypes
 from pathlib import Path
 
 from pulumi import FileAsset
-from pulumi_aws import s3, route53, cloudfront
+from pulumi_aws import s3, cloudfront
 
 from putils import component, opts, Certificate, a_aaaa
 
