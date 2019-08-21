@@ -1,3 +1,5 @@
-pulumi>=0.16.4
-pulumi_aws>=0.16.2
+# 0.17.28 is bugged
+pulumi>=0.16.4,!=0.17.28
+# pulumi_aws 0.18.27 requires pulumi 0.17.28
+pulumi_aws>=0.16.2,!=0.18.27
 pipenv
