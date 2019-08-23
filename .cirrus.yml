@@ -2,7 +2,8 @@ check_task:
   container:
     image: xonsh/xonsh
   env:
-    CIRRUS_SHELL: /usr/bin/xonsh
+    # CIRRUS_SHELL: /usr/bin/xonsh
+    CIRRUS_SHELL: cat
   script: |
     for pipfile in [p.absolute() for p in pg`**/Pipfile`]:
       cd @(pipfile.parent)
