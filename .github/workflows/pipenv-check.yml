@@ -8,5 +8,5 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - run: find
+    - run: find . -type f
     - uses: ./.github/actions/pipenv-check
