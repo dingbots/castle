@@ -3,10 +3,12 @@ check_task:
     image: xonsh/xonsh
   env:
     # CIRRUS_SHELL: /usr/bin/xonsh
-    CIRRUS_SHELL: cat
-  script: |
-    for pipfile in [p.absolute() for p in pg`**/Pipfile`]:
-      cd @(pipfile.parent)
-      print("")
-      print(f"Checking {$PWD}")
-      pipenv check
+    CIRRUS_SHELL: direct
+  script:
+    - echo foobar
+  # script: |
+  #   for pipfile in [p.absolute() for p in pg`**/Pipfile`]:
+  #     cd @(pipfile.parent)
+  #     print("")
+  #     print(f"Checking {$PWD}")
+  #     pipenv check
