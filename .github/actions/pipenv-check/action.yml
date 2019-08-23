@@ -1,6 +1,0 @@
-name: 'Pipenv Check'
-description: 'Runs pipenv check'
-author: 'astronouth7303'
-runs:
-  using: 'docker'
-  image: 'Dockerfile'

@@ -1,0 +1,11 @@
+check_task:
+  container:
+    image: xonsh/xonsh
+  env:
+    CIRRUS_SHELL: /usr/bin/xonsh
+  script: |
+    for pipfile in [p.absolute() for p in pg`**/Pipfile`]:
+      cd @(pipfile.parent)
+      print("")
+      print(f"Checking {$PWD}")
+      pipenv check
