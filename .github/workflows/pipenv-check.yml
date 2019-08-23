@@ -12,4 +12,5 @@ jobs:
         stat $GITHUB_WORKSPACE
         ls -la $GITHUB_WORKSPACE
         find $GITHUB_WORKSPACE
+        find /github
     - uses: ./.github/actions/pipenv-check
