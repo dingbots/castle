@@ -10,7 +10,7 @@ jobs:
     steps:
     - run: |
         stat $GITHUB_WORKSPACE
-        ls -la $GITHUB_WORKSPACE
         find $GITHUB_WORKSPACE
+        stat /github
         find /github
     - uses: ./.github/actions/pipenv-check
