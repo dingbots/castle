@@ -10,5 +10,6 @@ jobs:
     steps:
     - run: |
         stat $GITHUB_WORKSPACE
+        ls -la $GITHUB_WORKSPACE
         find $GITHUB_WORKSPACE
     - uses: ./.github/actions/pipenv-check
