@@ -1,0 +1,6 @@
+FROM xonsh/xonsh
+
+COPY entrypoint.xsh /entrypoint
+
+ENTRYPOINT ["/entrypoint"]
+CMD []

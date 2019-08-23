@@ -1,6 +1,7 @@
 check_task:
   container:
-    image: xonsh/xonsh
+    dockerfile: .ci/Dockerfile.xonsh
+
   env:
     # CIRRUS_SHELL: /usr/bin/xonsh
     CIRRUS_SHELL: direct
