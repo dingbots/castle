@@ -8,5 +8,5 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - run: find $GITHUB_WORKSPACE -type f
+    - run: find $GITHUB_WORKSPACE
     - uses: ./.github/actions/pipenv-check
