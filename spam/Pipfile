@@ -9,7 +9,7 @@ verify_ssl = true
 boto3 = "*"
 boto3-extensions = "*"
 flask = "*"
-aws-wsgi = {git = "https://github.com/astronouth7303/awsgi.git",ref = "master"}
+aws-wsgi = ">=0.2.0"
 
 [requires]
 python_version = "3.7"

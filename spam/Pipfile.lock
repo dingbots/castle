@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "21b35a79becbb39de1a2d38e08152364d96de8cf1450f1bce7212e13a0c69fac"
+            "sha256": "c0cdda66fe5278d9abe19b2b65981485353704c74968f07f9aad57f59ca31436"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -17,16 +17,20 @@
     },
     "default": {
         "aws-wsgi": {
-            "git": "https://github.com/astronouth7303/awsgi.git",
-            "ref": "a632a898b13aadcbede2f6d3e529489bd10ce302"
+            "hashes": [
+                "sha256:39e7e52d4681351e853ab056844153407b5ef159b652f2d37a51abd4ac3dfb7a",
+                "sha256:d414a74ca9bf5c7aac90f087143fd9ada60904216965d08ff0bfc3cafb5a9528"
+            ],
+            "index": "pypi",
+            "version": "==0.2.0"
         },
         "boto3": {
             "hashes": [
-                "sha256:01f1792838981191da87bed271f2b486841a282fcd78a3b5bac98e5b85c95ba8",
-                "sha256:0f1f796abf85e53a8a50b893cbeccd93ee081184453127b663da4b97d72aa0cc"
+                "sha256:13ec6cc11a329b56681b9a24421e58fac753cfb79085f186076fd3f9ca958c56",
+                "sha256:72bea54f1dfa080a5b10ae09946649f174ee72bb07a0eecf8ee774533bda2462"
             ],
             "index": "pypi",
-            "version": "==1.9.197"
+            "version": "==1.9.214"
         },
         "boto3-extensions": {
             "hashes": [
@@ -37,10 +41,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:6e7c49014430f73ba6ab638d4ad313f8522b8185e476fe1a57ce9cd50c596062",
-                "sha256:78627966a280328e4a7018758e91e6413d5cae8387e08ab219e232689a92cb45"
+                "sha256:1c357c8081f67797596eb28295cac38aa835cdb4ef6c69ede57e203359659d9c",
+                "sha256:2b6e366cac12f7146542ac802ea62a6b46dfc92e9ee3eb75ba450949d5e10f71"
             ],
-            "version": "==1.12.197"
+            "version": "==1.12.214"
         },
         "click": {
             "hashes": [
@@ -51,11 +55,11 @@
         },
         "docutils": {
             "hashes": [
-                "sha256:02aec4bd92ab067f6ff27a38a38a41173bf01bed8f89157768c1573f53e474a6",
-                "sha256:51e64ef2ebfb29cae1faa133b3710143496eca21c530f3f71424d77687764274",
-                "sha256:7a4bd47eaf6596e1295ecb11361139febe29b084a87bf005bf899f9a42edc3c6"
+                "sha256:6c4f696463b79f1fb8ba0c594b63840ebd41f059e92b31957c46b74a4599b6d0",
+                "sha256:9e4d7ecfc600058e07ba661411a2b7de2fd0fafa17d1a7f7361cd47b1175c827",
+                "sha256:a2aeea129088da402665e92e0b25b04b073c04b2dce4ab65caaa38b7ce2e1a99"
             ],
-            "version": "==0.14"
+            "version": "==0.15.2"
         },
         "flask": {
             "hashes": [
