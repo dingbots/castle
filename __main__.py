@@ -23,6 +23,12 @@ AwsgiHandler(
     zone=zone,
     package=clank,
     func='__main__:main',
+    environment={
+        'variables': {
+            'token': config.get('github-token'),  # Authenticates func->github
+            'secret': config.get('github-secret'),  # Authenticates github->func
+        }
+    },
     **opts()
 )
 

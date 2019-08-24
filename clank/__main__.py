@@ -1,33 +1,38 @@
+from github import Github
+import os
+import re
+
 import awsgi
 from flask import (
     Flask,
-    jsonify,
 )
 
+import github_webhook
+
+
 app = Flask(__name__)
+webhook = github_webhook.Webhook(
+    app,
+    endpoint='/postreceive',
+    secret=os.environ.get('secret'),
+)
+
+CHECKS = []
+
+# First create a Github instance:
+gh = Github(os.environ['token'])
 
 
 @app.route('/')
-def index():
-    return jsonify(status=200, message='OK')
+def hello_world():
+    return "Hello, World!"
+
+
+@webhook.hook('ping')
+def ping(payload):
+    return "pong"
 
 
 def main(event, context):
-    print("event", event)
-    rv = awsgi.response(app, event, context, base64_content_types={"image/png"})
-    print("result", rv)
+    rv = awsgi.response(app, event, context, base64_content_types={})
     return rv
-
-
-def test(event, context):
-    print("event", event)
-    print("context", context)
-    return {
-        "statusCode": 200,
-        "statusDescription": "200 OK",
-        "isBase64Encoded": False,
-        "headers": {
-            "Content-Type": "text/html"
-        },
-        "body": "<h1>Hello from Lambda!</h1>"
-    }
