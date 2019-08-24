@@ -1,34 +1,29 @@
 import pulumi
-from putils import opts, FauxOutput
+from putils import opts
 from deplumi import Package, AwsgiHandler
-from pulumi_aws import route53, s3
+from pulumi_aws import route53
 
 config = pulumi.Config('castle')
 
-zone = FauxOutput(route53.get_zone(name='dingbots.dev'))
+zone = route53.get_zone(name='dingbots.dev')
 
-buf = s3.Bucket(
-    'MyBucket',
-    **opts(),
-)
-
-spam = Package(
-    'SpamPack',
-    sourcedir='spam',
+clank = Package(
+    'Clank',
+    sourcedir='clank',
     resources={
-        'buffer': buf,
-    }
+    },
+    **opts()
 )
 
 api_domain = f'api.{config.require("domain")}'
 
 AwsgiHandler(
-    'SpamService',
+    'ClankService',
     domain=api_domain,
     zone=zone,
-    package=spam,
+    package=clank,
     func='__main__:main',
+    **opts()
 )
 
-pulumi.export('website',  site.url)
 pulumi.export('api_url',  f"https://{api_domain}/")
