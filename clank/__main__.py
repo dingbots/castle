@@ -1,6 +1,5 @@
 from github import Github
 import os
-import re
 
 import awsgi
 from flask import (
@@ -20,7 +19,7 @@ webhook = github_webhook.Webhook(
 CHECKS = []
 
 # First create a Github instance:
-gh = Github(os.environ['token'])
+gh = Github(os.environ.get['token'])
 
 
 @app.route('/')

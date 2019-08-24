@@ -32,4 +32,4 @@ AwsgiHandler(
     **opts()
 )
 
-pulumi.export('api_url',  f"https://{api_domain}/")
+pulumi.export('webhook_url',  f"https://{api_domain}/postreceive")
