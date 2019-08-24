@@ -16,6 +16,8 @@ CLIENT_SECRET = os.environ.get('github-client-secret')
 def get_global_github():
     return Github(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
 
+def get_github(token):
+    return Github(token)
 
 ghclient = LocalProxy(get_global_github)
 
@@ -51,7 +53,10 @@ def authorization_callback():
 
     respdata = json.loads(resp.data.decode('utf-8'))
     access_token = respdata['access_token']
-    # TODO: Save this
+    github = get_github(access_token)
+
+    userdata = github.get_user()
+    # TODO: Save access_token with userdata
 
 
 @webhook.hook('ping')
