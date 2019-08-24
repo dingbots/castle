@@ -1,3 +1,9 @@
 config:
   aws:region: us-east-2
   castle:domain: dev.dingbots.dev
+  castle:github-client-id:
+    secure: AAABALzKVQlxhxbAfr6gX9G3E127Uj1ceagyoMe4aHZbfu/4RksT81NjFraDv0B4AGoEQA==
+  castle:github-client-secret:
+    secure: AAABAEV61LePvua+ZSFie26oMTZns+INKBhXLodj46xD3jWTtB9m2J42mZ/KfTJLcN9mP8YR6Nl3TKshee7oEDKP7osZ4Mal
+  castle:github-secret:
+    secure: AAABAA1rLA4nZf85HLZ9lgYx5Awod2eHr0cyvypfe+59NNK8IS2X43k5Mh1evSKgB02kE1hsm7QQQq3LFU2I3XCRWHSD1/WKAOhw
