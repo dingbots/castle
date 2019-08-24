@@ -6,10 +6,18 @@ from flask import Flask, request
 import urllib3
 import github_webhook
 from github import Github
+from werkzeug.local import LocalProxy
 
 
 CLIENT_ID = os.environ.get('github-client-id')
 CLIENT_SECRET = os.environ.get('github-client-secret')
+
+
+def get_global_github():
+    return Github(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
+
+
+ghclient = LocalProxy(get_global_github)
 
 
 app = Flask(__name__)
