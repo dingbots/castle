@@ -11,7 +11,7 @@ boto3-extensions = "*"
 flask = "*"
 aws-wsgi = ">=0.2.0"
 gqlmod = "*"
-gqlmod-github = {extras = ["app"],version = "*"}
+gqlmod-github = {git = "https://github.com/go-build-it/gqlmod-github.git", extras = ["app"]}
 
 [requires]
 python_version = "3.7"
