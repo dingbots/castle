@@ -37,6 +37,7 @@ def hello_world():
     return "Hello, World!"
 
 
+# This is part of the OAuth flow for acting as a User
 @app.route('/authorization')
 def authorization_callback():
     session_code = request.args.get('code')
