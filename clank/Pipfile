@@ -10,7 +10,8 @@ boto3 = "*"
 boto3-extensions = "*"
 flask = "*"
 aws-wsgi = ">=0.2.0"
-pygithub = "*"
+gqlmod = "*"
+gqlmod-github = "*"
 
 [requires]
 python_version = "3.7"
