@@ -8,6 +8,3 @@ repo -> installation id (api call, cachable)
 installation id -> token (api call, short lived)
 
 repo -> PyPI tokens (test, prod, other)
-
-DynamoDB:
-- Map repo (path? id?) to installation id
