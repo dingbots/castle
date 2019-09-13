@@ -1,25 +1,24 @@
 import os
 import json
 
-import awsgi
 from flask import Flask, request
 import urllib3
 import github_webhook
-from github import Github
+import gqlmod
+from gqlmod_github.app import GithubApp
 from werkzeug.local import LocalProxy
 
 
 CLIENT_ID = os.environ.get('github-client-id')
 CLIENT_SECRET = os.environ.get('github-client-secret')
 
+APP_ID = os.environ.get('github-application-id')
+APP_PRIVATE_KEY = os.environ.get('github-private-key')
 
-def get_global_github():
-    return Github(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
 
-def get_github(token):
-    return Github(token)
-
-ghclient = LocalProxy(get_global_github)
+@LocalProxy
+def ghapp():
+    return GithubApp(APP_ID, APP_PRIVATE_KEY)
 
 
 app = Flask(__name__)
@@ -54,17 +53,11 @@ def authorization_callback():
 
     respdata = json.loads(resp.data.decode('utf-8'))
     access_token = respdata['access_token']
-    github = get_github(access_token)
-
-    userdata = github.get_user()
-    # TODO: Save access_token with userdata
+    with gqlmod.with_provider('github', token=access_token):
+        ...
+        # TODO: Actually do meaningful things here.
 
 
 @webhook.hook('ping')
 def ping(payload):
     return "pong"
-
-
-def main(event, context):
-    rv = awsgi.response(app, event, context, base64_content_types={})
-    return rv

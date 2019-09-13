@@ -11,7 +11,10 @@ boto3-extensions = "*"
 flask = "*"
 aws-wsgi = ">=0.2.0"
 gqlmod = "*"
-gqlmod-github = "*"
+gqlmod-github = {extras = ["app"],version = "*"}
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
