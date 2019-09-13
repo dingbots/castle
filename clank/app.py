@@ -8,6 +8,8 @@ import gqlmod
 from gqlmod_github.app import GithubApp
 from werkzeug.local import LocalProxy
 
+import status
+
 
 CLIENT_ID = os.environ.get('github-client-id')
 CLIENT_SECRET = os.environ.get('github-client-secret')
@@ -61,3 +63,17 @@ def authorization_callback():
 @webhook.hook('ping')
 def ping(payload):
     return "pong"
+
+
+@webhook.hook('push')
+def push(payload):
+    with gqlmod.with_provider('github', token=ghapp.token_for_repo(
+        payload['repository']['owner']['name'], payload['repository']['name'],
+        repo_id=payload['repository']['id']
+    )):
+        resp = status.add_check_run(
+            repo=payload['repository']['id'],
+            sha=payload['head'],
+            text="This is a test status!"
+        )
+        assert not resp.errors
