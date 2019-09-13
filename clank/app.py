@@ -29,8 +29,11 @@ webhook = github_webhook.Webhook(
 
 
 @app.route('/')
-def hello_world():
-    return "Hello, World!"
+def root():
+    """
+    Basic status call
+    """
+    return "Service is running"
 
 
 # This is part of the OAuth flow for acting as a User
