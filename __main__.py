@@ -25,12 +25,12 @@ AwsgiHandler(
     func='__main__:main',
     environment={
         'variables': {
-            'github-client-id': config.get('github-client-id'),
-            'github-client-secret': config.get('github-client-secret'),
-            'github-application-id': config.get('github-app-id'),
-            'github-private-key': config.get('github-private-key'),
-            'github-webhook-secret': config.get('github-secret'),  # Authenticates github->func
-        }
+            'github_client_id': config.get('github-client-id'),  # OAuth Client ID
+            'github_client_secret': config.get('github-client-secret'),  # OAuth Client Secret
+            'github_application_id': config.get('github-app-id'),  # Numeric App ID
+            'github_private_key': config.get('github-private-key'),  # Signs JWTs for API authn
+            'github_webhook_secret': config.get('github-secret'),  # github->app hook verify
+        },
     },
     **opts()
 )

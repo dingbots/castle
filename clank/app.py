@@ -8,11 +8,11 @@ from werkzeug.local import LocalProxy
 import status
 
 
-CLIENT_ID = os.environ.get('github-client-id')
-CLIENT_SECRET = os.environ.get('github-client-secret')
+CLIENT_ID = os.environ.get('github_client_id')
+CLIENT_SECRET = os.environ.get('github_client_secret')
 
-APP_ID = os.environ.get('github-application-id')
-APP_PRIVATE_KEY = os.environ.get('github-private-key')
+APP_ID = os.environ.get('github_application_id')
+APP_PRIVATE_KEY = os.environ.get('github_private_key')
 
 
 @LocalProxy
@@ -24,7 +24,7 @@ app = Flask(__name__)
 webhook = github_webhook.Webhook(
     app,
     endpoint='/postreceive',
-    secret=os.environ.get('github-webhook-secret'),
+    secret=os.environ.get('github_webhook_secret'),
 )
 
 
