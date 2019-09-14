@@ -23,11 +23,15 @@ AwsgiHandler(
     zone=zone,
     package=clank,
     func='__main__:main',
-    # environment={
-    #     'variables': {
-    #         'secret': config.get('github-secret'),  # Authenticates github->func
-    #     }
-    # },
+    environment={
+        'variables': {
+            'github-client-id': config.get('github-client-id'),
+            'github-client-secret': config.get('github-client-secret'),
+            'github-application-id': config.get('github-app-id'),
+            'github-private-key': config.get('github-private-key'),
+            'github-webhook-secret': config.get('github-secret'),  # Authenticates github->func
+        }
+    },
     **opts()
 )
 
