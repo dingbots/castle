@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "645e1da7e90177cb4af01e7a759a58668b8cbdf4f27f76c6406275f0278b9030"
+            "sha256": "5074d50c21bb016e3d6fec408b6d90467f53e130001d2e123a062ecde48001a4"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -76,6 +76,14 @@
             "index": "pypi",
             "version": "==1.1.1"
         },
+        "github-webhook": {
+            "hashes": [
+                "sha256:089c7b00c3711565dc14a9b741ef64383d2934a64961676d586b6ab558101030",
+                "sha256:5b13f43f1b764f688426f166c69d0dcdc4a1d88fa87a9017d127ed5752714d12"
+            ],
+            "index": "pypi",
+            "version": "==1.0.2"
+        },
         "gqlmod": {
             "hashes": [
                 "sha256:1e69d2efa8a4b30478883df0c8e458dd529e0686ab7f66453ef98c8f551816db",
@@ -89,7 +97,7 @@
                 "app"
             ],
             "git": "https://github.com/go-build-it/gqlmod-github.git",
-            "ref": "5523ce9ff1f6ae69cd2b5085ce602728a308c513"
+            "ref": "5830c3a8635e448a609234917778d64c209c87b7"
         },
         "graphql-core": {
             "hashes": [
