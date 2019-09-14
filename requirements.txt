@@ -1,3 +1,6 @@
 pulumi
 pulumi_aws
 pipenv
+
+-e ../putils
+-e ../deplumi
