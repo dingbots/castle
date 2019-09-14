@@ -54,3 +54,4 @@ def push(payload):
             text="This is a test status!"
         )
         assert not resp.errors
+        print(resp)

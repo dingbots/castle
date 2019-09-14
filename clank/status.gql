@@ -8,6 +8,7 @@ mutation add_check_run($repo:ID!,$sha:GitObjectID!,$text:String!) {
         status:COMPLETED
         conclusion:NEUTRAL
     }) {
-        # TODO: Fill this in?
+        id
+        permalink
     }
 }
