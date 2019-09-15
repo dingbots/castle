@@ -10,7 +10,7 @@ boto3 = "*"
 boto3-extensions = "*"
 flask = "*"
 aws-wsgi = ">=0.2.0"
-gqlmod = "*"
+gqlmod = {git = "https://github.com/go-build-it/gqlmod.git"}
 gqlmod-github = {git = "https://github.com/go-build-it/gqlmod-github.git",extras = ["app"]}
 github-webhook = "*"
 

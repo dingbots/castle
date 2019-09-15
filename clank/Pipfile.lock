@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "5074d50c21bb016e3d6fec408b6d90467f53e130001d2e123a062ecde48001a4"
+            "sha256": "678ef3ced38a44674438356b33934e358f70969c2897be936ed3f36283854ede"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -16,13 +16,6 @@
         ]
     },
     "default": {
-        "astor": {
-            "hashes": [
-                "sha256:0e41295809baf43ae8303350e031aff81ae52189b6f881f36d623fa8b2f1960e",
-                "sha256:37a6eed8b371f1228db08234ed7f6cfdc7817a3ed3824797e20cbb11dc2a7862"
-            ],
-            "version": "==0.8.0"
-        },
         "aws-wsgi": {
             "hashes": [
                 "sha256:39e7e52d4681351e853ab056844153407b5ef159b652f2d37a51abd4ac3dfb7a",
@@ -85,33 +78,15 @@
             "version": "==1.0.2"
         },
         "gqlmod": {
-            "hashes": [
-                "sha256:1e69d2efa8a4b30478883df0c8e458dd529e0686ab7f66453ef98c8f551816db",
-                "sha256:2f6b26b549d1f134c4696c9a8ccaad7e29d08052e8a3ffafb665fc65406364db"
-            ],
-            "index": "pypi",
-            "version": "==0.2"
+            "git": "https://github.com/go-build-it/gqlmod.git",
+            "ref": "e8583a6a844502ff98a691cf1ea7eda0c13ceaf1"
         },
         "gqlmod-github": {
             "extras": [
                 "app"
             ],
             "git": "https://github.com/go-build-it/gqlmod-github.git",
-            "ref": "5830c3a8635e448a609234917778d64c209c87b7"
-        },
-        "graphql-core": {
-            "hashes": [
-                "sha256:2f0d413b5f3413911c4e851cf68aac6f721c764facf4e8b64c258e023f20b421",
-                "sha256:56059e6680a4ae7fa300a71cac3883431a95093223e630da7c151d73879901da"
-            ],
-            "version": "==3.0.0a2"
-        },
-        "import-x": {
-            "hashes": [
-                "sha256:77d7477301edc2ef52e272578d8630882bc6fd6849b913de19869f3424d51748",
-                "sha256:fe4bb774d65dd97470cc32f5427479397a028a430891de7d24cc418e66c2363e"
-            ],
-            "version": "==0.1.0"
+            "ref": "a39132339e555f867f9813d98d05a87ceabc9629"
         },
         "itsdangerous": {
             "hashes": [
