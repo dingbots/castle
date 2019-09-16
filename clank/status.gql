@@ -11,6 +11,7 @@ mutation add_check_run($repo:ID!,$sha:GitObjectID!,$text:String!) {
         checkRun {
             id
             permalink
+            foobar
         }
     }
 }
