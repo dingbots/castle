@@ -1,0 +1,57 @@
+#~github~
+
+mutation start_check_run($repo:ID!, $sha:GitObjectID!, $name:String = "dingbot") {
+    createCheckRun(input: {
+        headSha: $sha
+        name: $name
+        repositoryId: $repo
+        status: IN_PROGRESS
+        output: {
+            title: $name
+            summary: "Running..."
+        }
+    }) {
+        checkRun {
+            id
+        }
+    }
+}
+
+mutation append_check_run($repo:ID!, $checkrun:ID!, $name:String = "dingbot", $text:String, $annotations:[CheckAnnotationData!]) {
+    updateCheckRun(input: {
+        repositoryId: $repo
+        checkRunId: $checkrun
+        name: $name
+        output: {
+            title: $name
+            summary: "Running..."
+            annotations: $annotations
+            text: $text
+        }
+    }) {
+        checkRun {
+            id
+        }
+    }
+}
+
+mutation complete_check_run(
+    $repo:ID!, $checkrun:ID!, $state:CheckConclusionState,
+    $name:String = "dingbot", $summary:String="Finished"
+) {
+    updateCheckRun(input: {
+        repositoryId: $repo
+        checkRunId: $checkrun
+        name: $name
+        status: COMPLETED
+        conclusion: $state  # Probably want either FAILURE or SUCCESS
+        output: {
+            title: $name
+            summary: $summary
+        }
+    }) {
+        checkRun {
+            id
+        }
+    }
+}
