@@ -27,9 +27,9 @@ AwsgiHandler(
         'variables': {
             'github_client_id': config.get('github-client-id'),  # OAuth Client ID
             'github_client_secret': config.get('github-client-secret'),  # OAuth Client Secret
-            'github_application_id': config.get('github-app-id'),  # Numeric App ID
+            'github_app_id': config.get('github-app-id'),  # Numeric App ID
             'github_private_key': config.get('github-private-key'),  # Signs JWTs for API authn
-            'github_webhook_secret': config.get('github-secret'),  # github->app hook verify
+            'github_secret': config.get('github-secret'),  # github->app hook verify
         },
     },
     **opts()

@@ -12,7 +12,7 @@ import ghstatus
 CLIENT_ID = os.environ.get('github_client_id')
 CLIENT_SECRET = os.environ.get('github_client_secret')
 
-APP_ID = os.environ.get('github_application_id')
+APP_ID = os.environ.get('github_app_id')
 APP_PRIVATE_KEY = os.environ.get('github_private_key').encode('ascii')
 
 
@@ -25,7 +25,7 @@ app = Flask(__name__)
 webhook = github_webhook.Webhook(
     app,
     endpoint='/postreceive',
-    secret=os.environ.get('github_webhook_secret'),
+    secret=os.environ.get('github_secret'),
 )
 
 
