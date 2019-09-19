@@ -8,6 +8,8 @@ from werkzeug.local import LocalProxy
 
 import ghstatus
 
+from pprint import pprint
+
 
 CLIENT_ID = os.environ.get('github_client_id')
 CLIENT_SECRET = os.environ.get('github_client_secret')
@@ -86,6 +88,17 @@ class OutputManager:
             state='FAILURE' if self.total_annotations else 'SUCCESS'
         )
 
+    def flush(self):
+        res = ghstatus.append_check_run(
+            repo=self.repo_id,
+            checkrun=self.run_id,
+            text=self.output,
+            annotations=self.annotations,
+        )
+        assert not res.errors
+        self.annotations = []
+        self.output = ""
+
 
 @app.route('/')
 def root():
@@ -103,11 +116,13 @@ def authorization_callback():
 
 @webhook.hook('push')
 def push(payload):
+    # print("App Data", ghapp.get_this_app())
+    pprint(payload)
     with ghapp.for_repo(
         payload['repository']['owner']['name'], payload['repository']['name'],
         repo_id=payload['repository']['id']
     ):
         with OutputManager(
-            payload['repository']['node_id'], payload['head']
+            payload['repository']['node_id'], payload['after'],
         ) as output:
             print("Hello, World!", file=output)
